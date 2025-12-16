@@ -210,7 +210,7 @@ jobs:
     function log(msg, type='info') {
         const time = new Date().toLocaleTimeString();
         const color = type === 'error' ? 'red' : (type === 'success' ? '#4ade80' : 'inherit');
-        logOutput.innerHTML += `<div style="color:\${color}">[\${time}] \${msg}</div>`;
+        logOutput.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
         logOutput.scrollTop = logOutput.scrollHeight;
     }
 
@@ -231,38 +231,38 @@ jobs:
         const token = tokenInput.value;
         const user = userInput.value;
         const filename = workflowFileInput.value;
-        const path = `.github/workflows/\${filename}`;
+        const path = `.github/workflows/${filename}`;
 
         workflowStatusArea.classList.remove('hidden');
-        workflowStatusMsg.textContent = `\${filename} を確認中...`;
+        workflowStatusMsg.textContent = `${filename} を確認中...`;
         workflowStatusMsg.style.color = 'black';
         btnUploadWorkflow.classList.add('hidden');
 
         try {
-            const url = `https://api.github.com/repos/\${user}/\${repoName}/contents/\${path}`;
+            const url = `https://api.github.com/repos/${user}/${repoName}/contents/${path}`;
             const response = await fetch(url, {
                 headers: {
-                    'Authorization': `token \${token}`,
+                    'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
             });
 
             if (response.ok) {
-                workflowStatusMsg.textContent = `✅ \${filename} は存在します。`;
+                workflowStatusMsg.textContent = `✅ ${filename} は存在します。`;
                 workflowStatusMsg.style.color = 'green';
             } else if (response.status === 404) {
-                workflowStatusMsg.textContent = `⚠️ \${filename} が見つかりません。`;
+                workflowStatusMsg.textContent = `⚠️ ${filename} が見つかりません。`;
                 workflowStatusMsg.style.color = 'orange';
                 btnUploadWorkflow.classList.remove('hidden');
                 
                 // Set up upload handler
                 btnUploadWorkflow.onclick = () => uploadWorkflowFile(repoName, path);
             } else {
-                throw new Error(`Status \${response.status}`);
+                throw new Error(`Status ${response.status}`);
             }
         } catch (err) {
-            log(`ファイル確認エラー: \${err.message}`, 'error');
-            workflowStatusMsg.textContent = `確認エラー: \${err.message}`;
+            log(`ファイル確認エラー: ${err.message}`, 'error');
+            workflowStatusMsg.textContent = `確認エラー: ${err.message}`;
         }
     }
 
@@ -272,16 +272,16 @@ jobs:
         const user = userInput.value;
         const contentEncoded = btoa(DEFAULT_WORKFLOW_CONTENT); // Base64 encode
 
-        if (!confirm(`\${repoName} に \${path} を作成しますか？`)) return;
+        if (!confirm(`${repoName} に ${path} を作成しますか？`)) return;
 
-        log(`\${path} をアップロード中...`);
+        log(`${path} をアップロード中...`);
 
         try {
-            const url = `https://api.github.com/repos/\${user}/\${repoName}/contents/\${path}`;
+            const url = `https://api.github.com/repos/${user}/${repoName}/contents/${path}`;
             const response = await fetch(url, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `token \${token}`,
+                    'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json',
                     'Content-Type': 'application/json'
                 },
@@ -292,16 +292,16 @@ jobs:
             });
 
             if (response.ok) {
-                log(`成功！ \${path} を作成しました。`, 'success');
-                workflowStatusMsg.textContent = `✅ \${path} を作成しました。`;
+                log(`成功！ ${path} を作成しました。`, 'success');
+                workflowStatusMsg.textContent = `✅ ${path} を作成しました。`;
                 workflowStatusMsg.style.color = 'green';
                 btnUploadWorkflow.classList.add('hidden');
             } else {
                 const errText = await response.text();
-                throw new Error(`\${response.status} - \${errText}`);
+                throw new Error(`${response.status} - ${errText}`);
             }
         } catch (err) {
-            log(`アップロード失敗: \${err.message}`, 'error');
+            log(`アップロード失敗: ${err.message}`, 'error');
         }
     }
 
@@ -339,14 +339,14 @@ jobs:
 
         try {
             // Fetch all repos (pagination handled simply by asking for 100 per page)
-            const response = await fetch(`https://api.github.com/users/\${user}/repos?per_page=100&sort=updated`, {
+            const response = await fetch(`https://api.github.com/users/${user}/repos?per_page=100&sort=updated`, {
                 headers: {
-                    'Authorization': `token \${token}`,
+                    'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
             });
 
-            if (!response.ok) throw new Error(`API Error: \${response.status}`);
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
             
             const repos = await response.json();
             
@@ -363,15 +363,15 @@ jobs:
             pageRepos.forEach(repo => {
                 const opt = document.createElement('option');
                 opt.value = repo.name;
-                opt.textContent = `\${repo.name} (Updated: \${new Date(repo.updated_at).toLocaleDateString()})`;
+                opt.textContent = `${repo.name} (Updated: ${new Date(repo.updated_at).toLocaleDateString()})`;
                 repoSelect.appendChild(opt);
             });
 
             step2Card.classList.remove('opacity-50', 'pointer-events-none');
-            log(`\${repos.length}件中、\${pageRepos.length}件のPages有効リポジトリを取得しました。`, 'success');
+            log(`${repos.length}件中、${pageRepos.length}件のPages有効リポジトリを取得しました。`, 'success');
 
         } catch (err) {
-            log(`エラー: \${err.message}`, 'error');
+            log(`エラー: ${err.message}`, 'error');
         }
     });
 
