@@ -34,12 +34,18 @@
                         (トークンを作成する)
                     </a>
                 </label>
-                <input type="password" id="github-token" class="w-full p-2 border rounded" placeholder="ghp_xxxxxxxxxxxx">
+                <div class="flex">
+                    <input type="password" id="github-token" class="flex-1 p-2 border rounded-l" placeholder="ghp_xxxxxxxxxxxx">
+                    <button type="button" id="clear-token" class="bg-gray-200 text-gray-700 px-4 rounded-r hover:bg-gray-300">Clear</button>
+                </div>
                 <p class="text-xs text-gray-500 mt-1">※ブラウザのローカルストレージにのみ保存されます。</p>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">GitHub Username</label>
-                <input type="text" id="github-user" class="w-full p-2 border rounded" placeholder="username">
+                <div class="flex">
+                    <input type="text" id="github-user" class="flex-1 p-2 border rounded-l" placeholder="username">
+                    <button type="button" id="clear-user" class="bg-gray-200 text-gray-700 px-4 rounded-r hover:bg-gray-300">Clear</button>
+                </div>
             </div>
             <div class="flex gap-2">
                 <button id="btn-save-config" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">設定を保存</button>
@@ -55,11 +61,16 @@
                 <option value="">リポジトリを選択してください...</option>
             </select>
             
-            <div id="workflow-status-area" class="mb-4 p-3 bg-gray-100 rounded hidden">
-                <p id="workflow-status-msg" class="text-sm font-bold mb-2"></p>
-                <button id="btn-upload-workflow" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 hidden">
-                    tauri.yml を作成・アップロード
-                </button>
+            <div id="status-area" class="mb-4 p-3 bg-gray-100 rounded hidden">
+                <p id="status-msg" class="text-sm font-bold mb-2"></p>
+                <div class="flex gap-2">
+                    <button id="btn-init-tauri" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 hidden">
+                        Tauriプロジェクトを初期化 (src-tauri作成)
+                    </button>
+                    <button id="btn-create-workflow" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 hidden">
+                        Workflowファイルのみ作成
+                    </button>
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -92,69 +103,147 @@
     const repoSelect = document.getElementById('repo-select');
     const step2Card = document.getElementById('step-2-card');
     const logOutput = document.getElementById('log-output');
-    const workflowStatusArea = document.getElementById('workflow-status-area');
-    const workflowStatusMsg = document.getElementById('workflow-status-msg');
-    const btnUploadWorkflow = document.getElementById('btn-upload-workflow');
+    const statusArea = document.getElementById('status-area');
+    const statusMsg = document.getElementById('status-msg');
+    const btnInitTauri = document.getElementById('btn-init-tauri');
+    const btnCreateWorkflow = document.getElementById('btn-create-workflow');
     const workflowFileInput = document.getElementById('workflow-file');
 
-    // Default Workflow Content
-    const DEFAULT_WORKFLOW_CONTENT = `name: Build Tauri App
+        // 32x32 Pixel Transparent PNG (Base64)
+        const DUMMY_ICON_PNG = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAMElEQVRYR+3OQEzAQAAAsPZ/6O00Lg7TARV0096881Nt9/77/f/+/3///fv9//7/f78FO18xA9e7G5UAAAAASUVORK5CYII=";
+        // Minimal Valid ICO (Transparent 1x1)
+        const DUMMY_ICON_ICO = "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        // Actually, let's use a real, very simple ICO base64.
+        // This is a 16x16 white pixel ICO.
+        const REAL_ICO_BASE64 = "AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA/4AAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+    
+        // Define standard Tauri project files
+        const TAURI_INIT_FILES = {
+            // Package.json (Essential for Node environment)
+            "package.json": `{
+  "name": "tauri-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build script needed'",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0"
+  }
+}`,
 
-on:
-  workflow_dispatch: # これにより、GUIアプリやGitHub上から手動実行が可能になります
-
-jobs:
-  build-tauri:
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'windows-latest'
-            args: ''
-
-    runs-on: \${{ matrix.platform }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          # Those targets are only used on macos runners so it's in an \`if\` to slightly speed up windows and linux builds.
-          targets: \${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: install frontend dependencies
-        run: npm install # or pnpm install / yarn install
-
-      - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: app-v__VERSION__ # the action automatically replaces \`__VERSION__\` with the app version
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: false
-          args: \${{ matrix.args }}
-`;
-
-    // Default Workflow Content
-    const DEFAULT_WORKFLOW_CONTENT = `name: Build Tauri App
-
+            // Rust Config
+            "src-tauri/Cargo.toml": `[package]
+    name = "app"
+    version = "0.1.0"
+    description = "A Tauri App"
+    authors = ["you"]
+    edition = "2021"
+    rust-version = "1.70"
+    
+    [build-dependencies]
+    tauri-build = { version = "1.5", features = [] }
+    
+    [dependencies]
+    serde_json = "1.0"
+    serde = { version = "1.0", features = ["derive"] }
+    tauri = { version = "1.5", features = ["shell-open"] }
+    
+    [features]
+    custom-protocol = ["tauri/custom-protocol"]`,
+    
+            // Build Script
+            "src-tauri/build.rs": `fn main() {
+      tauri_build::build()
+    }`,
+    
+            // Main Rust Entry
+            "src-tauri/src/main.rs": `#![cfg_attr(
+      all(not(debug_assertions), target_os = "windows"),
+      windows_subsystem = "windows"
+    )]
+    
+    fn main() {
+      tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+    }`,
+    
+            // Tauri Config
+            "src-tauri/tauri.conf.json": `{
+      "build": {
+        "beforeDevCommand": "",
+        "beforeBuildCommand": "",
+        "devPath": "../frontend-dist/index.html",
+        "distDir": "../frontend-dist",
+        "withGlobalTauri": true
+      },
+      "package": {
+        "productName": "MyApp",
+        "version": "0.1.0"
+      },
+      "tauri": {
+        "allowlist": {
+          "all": false,
+          "shell": {
+            "all": false,
+            "open": true
+          }
+        },
+        "bundle": {
+          "active": true,
+          "category": "DeveloperTool",
+          "copyright": "",
+          "deb": {
+            "depends": []
+          },
+          "externalBin": [],
+          "icon": [
+            "icons/icon.png",
+            "icons/icon.ico"
+          ],
+          "identifier": "com.tauri.builder.app",
+          "longDescription": "",
+          "macOS": {
+            "entitlements": null,
+            "exceptionDomain": "",
+            "frameworks": [],
+            "providerShortName": null,
+            "signingIdentity": null
+          },
+          "resources": [],
+          "shortDescription": "",
+          "targets": "all",
+          "windows": {
+            "certificateThumbprint": null,
+            "digestAlgorithm": "sha256",
+            "timestampUrl": ""
+          }
+        },
+        "security": {
+          "csp": null
+        },
+        "updater": {
+          "active": false
+        },
+        "windows": [
+          {
+            "fullscreen": false,
+            "height": 600,
+            "resizable": true,
+            "title": "MyApp",
+            "width": 800
+          }
+        ]
+      }
+    }`,
+            // Icons
+            "src-tauri/icons/icon.png": null, // Special handling
+            "src-tauri/icons/icon.ico": null, // Special handling
+    
+                    // Workflow
+                    ".github/workflows/tauri.yml": `name: Build Tauri App
 on:
   workflow_dispatch:
 
@@ -191,7 +280,22 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install frontend dependencies
-        run: npm install
+        run: npm install || true
+
+      - name: Setup Frontend
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path frontend-dist
+          if (Test-Path index.html) {
+            Copy-Item -Path index.html -Destination frontend-dist/index.html
+            Write-Host "Copied index.html"
+          } else {
+            Set-Content -Path frontend-dist/index.html -Value "<h1>Hello Tauri</h1>"
+            Write-Host "Created dummy index.html"
+          }
+          if (Test-Path assets) { Copy-Item -Path assets -Destination frontend-dist/ -Recurse -Force }
+          if (Test-Path css) { Copy-Item -Path css -Destination frontend-dist/ -Recurse -Force }
+          if (Test-Path js) { Copy-Item -Path js -Destination frontend-dist/ -Recurse -Force }
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
@@ -204,9 +308,8 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: \${{ matrix.args }}
-`;
-
-    // Logger
+`
+                };    // Logger
     function log(msg, type='info') {
         const time = new Date().toLocaleTimeString();
         const color = type === 'error' ? 'red' : (type === 'success' ? '#4ade80' : 'inherit');
@@ -226,92 +329,176 @@ jobs:
         userInput.value = localStorage.getItem('gh_tauri_user') || '';
     });
 
-    // Check Workflow File Existence
-    async function checkWorkflowExistence(repoName) {
+    document.getElementById('clear-token').addEventListener('click', () => {
+        tokenInput.value = '';
+        localStorage.removeItem('gh_tauri_token');
+        log('トークン入力欄をクリアしました。');
+    });
+
+    document.getElementById('clear-user').addEventListener('click', () => {
+        userInput.value = '';
+        localStorage.removeItem('gh_tauri_user');
+        log('ユーザー名入力欄をクリアしました。');
+    });
+
+    // Helper: Check file existence
+    async function checkFile(repo, path) {
         const token = tokenInput.value;
         const user = userInput.value;
-        const filename = workflowFileInput.value;
-        const path = `.github/workflows/${filename}`;
+        const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+        const response = await fetch(url, {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        return response.ok; // 200 OK means exists
+    }
 
-        workflowStatusArea.classList.remove('hidden');
-        workflowStatusMsg.textContent = `${filename} を確認中...`;
-        workflowStatusMsg.style.color = 'black';
-        btnUploadWorkflow.classList.add('hidden');
+    // Check Project Status
+    async function checkProjectStatus(repoName) {
+        const workflowName = workflowFileInput.value;
+        const workflowPath = `.github/workflows/${workflowName}`;
+        const tauriConfigPath = 'src-tauri/tauri.conf.json';
+        const iconPath = 'src-tauri/icons/icon.ico';
+
+        statusArea.classList.remove('hidden');
+        statusMsg.textContent = `リポジトリの状態を確認中...`;
+        statusMsg.style.color = 'black';
+        btnInitTauri.classList.add('hidden');
+        btnCreateWorkflow.classList.add('hidden');
 
         try {
-            const url = `https://api.github.com/repos/${user}/${repoName}/contents/${path}`;
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
+            const hasWorkflow = await checkFile(repoName, workflowPath);
+            const hasTauri = await checkFile(repoName, tauriConfigPath);
+            const hasIcon = await checkFile(repoName, iconPath);
 
-            if (response.ok) {
-                workflowStatusMsg.textContent = `✅ ${filename} は存在します。`;
-                workflowStatusMsg.style.color = 'green';
-            } else if (response.status === 404) {
-                workflowStatusMsg.textContent = `⚠️ ${filename} が見つかりません。`;
-                workflowStatusMsg.style.color = 'orange';
-                btnUploadWorkflow.classList.remove('hidden');
+            if (hasWorkflow && hasTauri && hasIcon) {
+                statusMsg.textContent = `✅ Tauriプロジェクト構成は正常です。(再作成可能)`;
+                statusMsg.style.color = 'green';
+                btnCreateWorkflow.classList.remove('hidden'); // Force show for repair
+                btnCreateWorkflow.textContent = "Workflowファイルを修復/更新";
+                btnCreateWorkflow.onclick = () => initializeTauriProject(repoName, true);
                 
-                // Set up upload handler
-                btnUploadWorkflow.onclick = () => uploadWorkflowFile(repoName, path);
-            } else {
-                throw new Error(`Status ${response.status}`);
+                // Allow force re-init
+                btnInitTauri.classList.remove('hidden');
+                btnInitTauri.textContent = "Tauri設定を上書き (再初期化)";
+                btnInitTauri.onclick = () => initializeTauriProject(repoName);
+            } else if (!hasTauri || !hasIcon) {
+                statusMsg.textContent = `⚠️ Tauriプロジェクトの設定(src-tauri)が不完全です(.ico等)。`;
+                statusMsg.style.color = 'orange';
+                btnInitTauri.classList.remove('hidden');
+                // Set up init handler
+                btnInitTauri.onclick = () => initializeTauriProject(repoName);
+            } else if (!hasWorkflow) {
+                statusMsg.textContent = `⚠️ Workflowファイル(${workflowName})が見つかりません。`;
+                statusMsg.style.color = 'orange';
+                btnCreateWorkflow.classList.remove('hidden');
+                // Set up workflow creation handler
+                btnCreateWorkflow.onclick = () => initializeTauriProject(repoName, true);
             }
         } catch (err) {
-            log(`ファイル確認エラー: ${err.message}`, 'error');
-            workflowStatusMsg.textContent = `確認エラー: ${err.message}`;
+            log(`確認エラー: ${err.message}`, 'error');
+            statusMsg.textContent = `確認エラー: ${err.message}`;
         }
     }
 
-    // Upload Workflow File
-    async function uploadWorkflowFile(repoName, path) {
+    // Initialize Tauri Project (Upload files)
+    async function initializeTauriProject(repoName, workflowOnly = false) {
         const token = tokenInput.value;
         const user = userInput.value;
-        const contentEncoded = btoa(DEFAULT_WORKFLOW_CONTENT); // Base64 encode
 
-        if (!confirm(`${repoName} に ${path} を作成しますか？`)) return;
+        let targetFiles = {};
+        if (workflowOnly) {
+            const workflowName = workflowFileInput.value;
+            // Add random comment to force update
+            const timestamp = new Date().toISOString();
+            const originalContent = TAURI_INIT_FILES['.github/workflows/tauri.yml'];
+            targetFiles[`.github/workflows/${workflowName}`] = originalContent + `\n# Updated at ${timestamp}`;
+            
+            if (!confirm(`${repoName} にWorkflowファイルを作成しますか？`)) return;
+        } else {
+            targetFiles = TAURI_INIT_FILES;
+            if (!confirm(`${repoName} をTauriプロジェクトとして初期化しますか？\n(src-tauriフォルダなどを追加します)`)) return;
+        }
 
-        log(`${path} をアップロード中...`);
+        log(`ファイルをアップロード中...`);
+        let successCount = 0;
+        let failCount = 0;
 
-        try {
-            const url = `https://api.github.com/repos/${user}/${repoName}/contents/${path}`;
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: `Add ${path} via Tauri Builder App`,
-                    content: contentEncoded
-                })
-            });
-
-            if (response.ok) {
-                log(`成功！ ${path} を作成しました。`, 'success');
-                workflowStatusMsg.textContent = `✅ ${path} を作成しました。`;
-                workflowStatusMsg.style.color = 'green';
-                btnUploadWorkflow.classList.add('hidden');
+        for (const [path, content] of Object.entries(targetFiles)) {
+            // Determine content encoding
+            let bodyContent;
+            if (path.endsWith('.png')) {
+                // Already base64
+                bodyContent = DUMMY_ICON_PNG;
+            } else if (path.endsWith('.ico')) {
+                // Already base64
+                bodyContent = REAL_ICO_BASE64;
             } else {
-                const errText = await response.text();
-                throw new Error(`${response.status} - ${errText}`);
+                // Text content -> Base64
+                bodyContent = btoa(unescape(encodeURIComponent(content)));
             }
-        } catch (err) {
-            log(`アップロード失敗: ${err.message}`, 'error');
+
+            try {
+                // Check if exists to get SHA (for update) or just create?
+                // For simplicity, we assume creation. If exists, we might need SHA.
+                // Let's try to get SHA first to allow overwrite.
+                let sha = null;
+                const checkRes = await fetch(`https://api.github.com/repos/${user}/${repoName}/contents/${path}`, {
+                     headers: { 'Authorization': `token ${token}` }
+                });
+                if (checkRes.ok) {
+                    const data = await checkRes.json();
+                    sha = data.sha;
+                }
+
+                const url = `https://api.github.com/repos/${user}/${repoName}/contents/${path}`;
+                const res = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Add ${path}`,
+                        content: bodyContent,
+                        sha: sha // Include SHA if updating
+                    })
+                });
+
+                if (res.ok) {
+                    log(`OK: ${path}`);
+                    successCount++;
+                } else {
+                    const txt = await res.text();
+                    log(`Error ${path}: ${res.status} ${txt}`, 'error');
+                    failCount++;
+                }
+            } catch (e) {
+                log(`Ex ${path}: ${e.message}`, 'error');
+                failCount++;
+            }
+        }
+
+        if (failCount === 0) {
+            log('すべてのファイルの作成が完了しました！', 'success');
+            checkProjectStatus(repoName); // Re-check
+        } else {
+            log(`${failCount} 個のファイル作成に失敗しました。`, 'error');
         }
     }
 
     // Repo Select Change Event
     repoSelect.addEventListener('change', () => {
         const repo = repoSelect.value;
+        const selectedOption = repoSelect.options[repoSelect.selectedIndex];
+        
         if (repo) {
-            checkWorkflowExistence(repo);
+             if (selectedOption.dataset.branch) {
+                document.getElementById('target-branch').value = selectedOption.dataset.branch;
+            }
+            checkProjectStatus(repo);
         } else {
-            workflowStatusArea.classList.add('hidden');
+            statusArea.classList.add('hidden');
         }
     });
 
@@ -319,7 +506,7 @@ jobs:
     workflowFileInput.addEventListener('change', () => {
         const repo = repoSelect.value;
         if (repo) {
-            checkWorkflowExistence(repo);
+            checkProjectStatus(repo);
         }
     });
 
@@ -335,10 +522,9 @@ jobs:
 
         log('リポジトリを取得中...');
         repoSelect.innerHTML = '<option value="">取得中...</option>';
-        workflowStatusArea.classList.add('hidden');
+        statusArea.classList.add('hidden');
 
         try {
-            // Fetch all repos (pagination handled simply by asking for 100 per page)
             const response = await fetch(`https://api.github.com/users/${user}/repos?per_page=100&sort=updated`, {
                 headers: {
                     'Authorization': `token ${token}`,
@@ -364,6 +550,7 @@ jobs:
                 const opt = document.createElement('option');
                 opt.value = repo.name;
                 opt.textContent = `${repo.name} (Updated: ${new Date(repo.updated_at).toLocaleDateString()})`;
+                opt.dataset.branch = repo.default_branch;
                 repoSelect.appendChild(opt);
             });
 
@@ -409,7 +596,9 @@ jobs:
             if (response.ok) {
                 log(`成功！ ${workflowFile} がトリガーされました。GitHub Actionsタブを確認してください。`, 'success');
                 const actionsUrl = `https://github.com/${user}/${repo}/actions`;
-                log(`<a href="${actionsUrl}" target="_blank" class="underline text-blue-400">ここをクリックしてActionsを開く</a>`);
+                const releasesUrl = `https://github.com/${user}/${repo}/releases`;
+                log(`1. <a href="${actionsUrl}" target="_blank" class="underline text-blue-600">進捗確認 (GitHub Actions)</a>`);
+                log(`2. <a href="${releasesUrl}" target="_blank" class="underline text-blue-600">完了後のexeダウンロード (Releases)</a>`);
             } else {
                 const errText = await response.text();
                 throw new Error(`${response.status} - ${errText}`);
@@ -418,7 +607,12 @@ jobs:
         } catch (err) {
             log(`ビルドトリガー失敗: ${err.message}`, 'error');
             if (err.message.includes('404')) {
-                log('ヒント: Workflowファイル名が正しいか、Tokenに権限があるか確認してください。', 'info');
+                log('ヒント: WorkflowファイルまたはTauri設定が見つかりません。', 'info');
+                log('上の「初期化」ボタンを使用してください。', 'info');
+            } else if (err.message.includes('422')) {
+                log('ヒント: Workflowファイルに手動トリガー設定(workflow_dispatch)が見つからないか、反映待ちです。', 'info');
+                log('GitHub Actionsタブを開いて、Workflowが一覧に表示されているか確認してください。', 'info');
+                log('※ファイル作成直後は数分かかる場合があります。', 'info');
             }
         }
     });
